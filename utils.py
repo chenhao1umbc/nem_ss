@@ -217,7 +217,7 @@ def calc_likelihood(x, Rx):
     if x.dim() == 2:  # only 1 channel
         p1 = (np.pi*Rx)**-1
         Rx_1 = 1/Rx
-        p2 = e**(-1*x.conj() * Rx_1 * x)
+        p2 = (-1*x.conj() * Rx_1 * x).exp()
         P = p1.log() + p2.log()
     else:
         "calculated the log likelihood"
