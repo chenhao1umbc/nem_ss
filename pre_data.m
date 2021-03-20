@@ -16,7 +16,7 @@ close all
 
 addpath('func')
 rng(0)
-visualize = 0;
+visualize = 1;
 
 %% load the original data
 importfile('/home/chenhao1/Matlab/nem_ss/data/vj1.png');
@@ -31,6 +31,7 @@ vj{2} = vj2/norm(vj2);
 vj{3} = vj3/norm(vj3);
 for j = 1:3 % this make shape has >0 value, non-shape to 0
     vj{j} = max(vj{j}, [], 'all') - vj{j};
+    vj{j} = vj{j}/norm(vj{j});
 end
 
 temp = zeros(50, 50, 3);
@@ -39,6 +40,7 @@ for j = 1:3
     if visualize
         figure;
         imagesc(vj{j})
+        title('check common area')
     end
 end
 
@@ -94,7 +96,7 @@ if visualize  % to see the mixture data
     end
 end
 
-% code Generate online data with diff powers and various ang 
+%%%%% code Generate online data with diff powers and various ang 
 load('./data/vj.mat')
 J = size(vj,3); % how many sources, J =3
 max_db = 20;
