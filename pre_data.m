@@ -60,13 +60,14 @@ end
 n_channel = 3;
 J = 3; % how many sources
 
-aoa = 45; % in degrees
-steer_vec = get_steer_vec(aoa, n_channel);
+aoa = [20, 45, 70]; % in degrees, for each source
+steer_vec = get_steer_vec(aoa, n_channel, J);
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
     temp = vj(:,:,j);
-    cj_nf = (temp(:)./(steer_vec.*steer_vec)).^0.5; %x >=0
-    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec;
+    st_sq = steer_vec(j,:).^2;
+    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
+    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
 end
 
 % check if vj can be calculated from cjnf
@@ -79,7 +80,7 @@ end
 % adding power diff
 max_db = 20;
 power_db = rand(1, 3)*max_db; % power diff for each source
-for j = 1:3
+for j = 1:J
     cjnf(:,:,j) = 10^(power_db(j)/20) * cjnf(:, :, j);
 end
 
@@ -95,17 +96,26 @@ end
 
 % code Generate online data with diff powers and various ang 
 load('./data/vj.mat')
+J = size(vj,3); % how many sources, J =3
+max_db = 20;
 n_channel = 3;
-J = 3; % how many sources
 
-aoa = rand(n_channel)*180; % in degrees
-steer_vec = get_steer_vec(aoa, n_channel);
+aoa = (rand(1,J)-0.5)*90; % in degrees
+power_db = rand(1, 3)*max_db; % power diff for each source
+steer_vec = get_steer_vec(aoa, n_channel, J);
+
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
     temp = vj(:,:,j);
-    cj_nf = (temp(:)./(steer_vec.*steer_vec)).^0.5; %x >=0
-    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec;
+    st_sq = steer_vec(j,:).^2;
+    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
+    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
 end
+for j = 1:J
+    cjnf(:,:,j) = 10^(power_db(j)/20) * cjnf(:, :, j);
+end
+
+xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
 
 %% Experiment 2 data
 
