@@ -40,7 +40,7 @@ for j = 1:3
     if visualize
         figure;
         imagesc(vj{j})
-        title('check common area')
+        title(['v', num2str(j)])
     end
 end
 
@@ -49,6 +49,7 @@ vj = temp; % for later calc., vj will be shape of [50, 50, 3]
 if visualize
     figure;
     imagesc(sum(vj,3))
+    title('check common area')
 end
 
 %% Experiment 1 data
@@ -96,7 +97,7 @@ if visualize  % to see the mixture data
     end
 end
 
-%%%%% code Generate online data with diff powers and various ang 
+%%%%% code for generate online data with diff powers and various ang 
 load('./data/vj.mat')
 J = size(vj,3); % how many sources, J =3
 max_db = 20;
@@ -104,8 +105,8 @@ n_channel = 3;
 
 aoa = (rand(1,J)-0.5)*90; % in degrees
 power_db = rand(1, 3)*max_db; % power diff for each source
-steer_vec = get_steer_vec(aoa, n_channel, J);
 
+steer_vec = get_steer_vec(aoa, n_channel, J);
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
     temp = vj(:,:,j);
@@ -120,6 +121,47 @@ end
 xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
 
 %% Experiment 2 data
+load('./data/vj.mat')
+visualize2 = 1;
+J = size(vj,3); % how many sources, J =3
+n_channel = 3;
 
+% using circshift to get new positions for shapes
+% down 2 = dim1, move 2
+% up 3 = dim1, move -3
+% right 1 = dim2, move 1
+% left 6 = dim2, move -6
+move_v{1} = [randi([-5, 15],1), randi([-10, 15],1)]; % dim1, dim2
+move_v{2} = [randi([-2, 18],1), randi([-15, 5],1)];
+move_v{3} = [randi([-12, 5],1), randi([-10, 10],1)];
+
+for j =1:J
+    shifts = move_v{j};
+    temp = circshift(vj(:,:,j),shifts);
+    vj(:,:,j) = temp;
+    if visualize2
+        figure;
+        imagesc(vj(:,:,j))
+        title(['v', num2str(j)])
+        
+    end
+end
+if visualize2
+    figure;
+    imagesc(sum(vj,3))
+    title('check common area')
+end
+
+aoa = [20, 45, 70]; % in degrees
+steer_vec = get_steer_vec(aoa, n_channel, J);
+cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
+for j = 1:J
+    temp = vj(:,:,j);
+    st_sq = steer_vec(j,:).^2;
+    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
+    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
+end
+
+xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
 
 
