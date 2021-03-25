@@ -60,6 +60,9 @@ end
 % Here to make sure cj(n,f) is real number, is real number, we have
 % cj(n,f) = cj_(n,f).*steer_vec
 % vj(n,f) = sum(|cj(n,f)|.^2)/n_channel, where cj(n,f) is the real number
+
+% the following code is a demo of showing the correctness
+% the code for exp_1 data generation starts at line 104
 n_channel = 3;
 J = 3; % how many sources
 
@@ -119,6 +122,8 @@ for j = 1:J
 end
 
 xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
+
+
 
 %% Experiment 2 data
 load('./data/vj.mat')
