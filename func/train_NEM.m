@@ -1,9 +1,17 @@
-function [vj, cjh, Rj, neural_net] = train_NEM(x, v, model, opts)
+function [vj, cjh, Rj, neural_net] = train_NEM(x, v, models, opts)
 % This function is the main body of the algorithm
 % x is shape of [n_c, 1, NF]
 % v is shape of [1, 1, NF]
 % model is neural network to be trained
 % opts contains all the parameters
+% original complex likelihood function is
+% Product_(n,f) 1/(det(pi*Rx) * e^ -(x-mu)' * inv(Rx) * (x-mu)
+%
+% here we the real version
+% Product_(n,f) (det(2*pi*Rx)^-0.5 * e^ -0.5*(x-mu)' * inv(Rx) * (x-mu)
+
+
+
 n_c = opts.n_c;
 NF = opts.NF;
 J = opts.J;
@@ -36,11 +44,12 @@ Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
 
 %init cjh, I
 cjh = zeros(n_c, 1, NF, J);
-Rcjh = Rcj
+Rcjh = Rcj;
 I = eye(n_c,n_c);
 vj = reshape(vj, NF, J);
 
-for i = 1:opts.iter
+for epoch = 1:opts.iter
+    for i = 1:opts.n_sample
     %% E-step
     %"Calc. Wiener Filter%" shape of [n_c, n_c, NF, J]
     for j = 1:J
@@ -57,7 +66,7 @@ for i = 1:opts.iter
     
     %"calc. log P(cj|x; theta_hat), using log to avoid inf problem%" 
     % R = (Rcj**-1 + (Rx-Rcj)**-1)**-1 = (I - Wj)Rcj, The det of a Hermitian matrix is real
-    logp = -log(det(pi*Rh))% cj=cjh, e^(0), shape of [n_batch, n_s, n_f, n_t,]
+    logp = -0.5*log(det(2*pi*Rh));% cj=cjh, e^(0), shape of [n_batch, n_s, n_f, n_t,]
 
     
     %% M-step
@@ -65,24 +74,26 @@ for i = 1:opts.iter
     for j = 1:J
         for nf = 1:NF
             Rj(:, :, NF, J) = (Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
-            vj = model(gammaj);
         end
+            Rj = sum(Rj, 3)/NF;
+        model = models{j};
+        vj[:,:, j] = model(gammaj[:,:,j]);
+        [loss, Rx, Rcj] = loss_func(logp, x, cjh, vj, Rj); % model param is fixed
     end
-    Rj = sum(Rj, 3)/NF;
+
+    end
     
-    
-%                     % the M-step
-%                 %"cal spatial covariance matrix%" % Rj shape of [n_batch, n_s, 1, 1, n_c, n_c]                
-%                 Rj = ((Rcjh/(vj+eps)[...,None, None]).sum((2,3))/n_t/n_f)[:,:,None,None]
-%                 %"Back propagate to update the input of neural network%"
-%                 vj = model(gammaj) %shape of [n_batch, n_s, n_f, n_t ]
-%                 loss, Rx, Rcj = loss_func(logp, x, cjh, vj, Rj) % model param is fixed
-%                 optim_gamma.zero_grad()                
-%                 loss.back()
-%                 optim_gamma.step()
-%                 torch.cuda.empty_cache()   
-    
-neural_net = model;
+lgraph = createUnet(nr,nc);
+options = trainingOptions('sgdm',...
+    'MiniBatchSize',1,...
+    'MaxEpochs',5,...   % Could try fewer or more Epochs
+    'InitialLearnRate',1e-3,...
+    'LearnRateSchedule','piecewise',...
+    'LearnRateDropFactor',0.1,...
+    'LearnRateDropPeriod',20,...
+    'Shuffle','every-epoch'); 
+
+neural_net = trainNetwork(ds,lgraph,options);
 end
 
    
