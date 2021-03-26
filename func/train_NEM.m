@@ -10,8 +10,6 @@ function [vj, cjh, Rj, neural_net] = train_NEM(x, v, models, opts)
 % here we the real version
 % Product_(n,f) (det(2*pi*Rx)^-0.5 * e^ -0.5*(x-mu)' * inv(Rx) * (x-mu)
 
-
-
 n_c = opts.n_c;
 NF = opts.NF;
 J = opts.J;
@@ -50,37 +48,40 @@ vj = reshape(vj, NF, J);
 
 for epoch = 1:opts.iter
     for i = 1:opts.n_sample
-    %% E-step
-    %"Calc. Wiener Filter%" shape of [n_c, n_c, NF, J]
-    for j = 1:J
-        for nf = 1:NF
-            Wj = Rcj(:, :,nf,j) * inv(Rx(:, :,nf));
-            cjh_ = Wj * x(:,:,nf);
-            cjh(:, :, nf, j) = cjh_;
-            Rh = (I - Wj)*Rcj(:, :,nf,j);
-            Rcjh_ = cjh_ * cjh_' + Rh;
-            Rcjh_ = (Rcjh_ + permute(Rcjh_, [2,1,3]))/2;
-            Rcjh(:, :,nf,j) = Rcjh_;
-        end
-    end
-    
-    %"calc. log P(cj|x; theta_hat), using log to avoid inf problem%" 
-    % R = (Rcj**-1 + (Rx-Rcj)**-1)**-1 = (I - Wj)Rcj, The det of a Hermitian matrix is real
-    logp = -0.5*log(det(2*pi*Rh));% cj=cjh, e^(0), shape of [n_batch, n_s, n_f, n_t,]
+        %% E-step
+        %"Calc. Wiener Filter%" shape of [n_c, n_c, NF, J]
+        logp = zeros(NF, J);
+        for j = 1:J
+            for nf = 1:NF
+                Wj = Rcj(:, :,nf,j) * inv(Rx(:, :,nf));
+                cjh_ = Wj * x(:,:,nf);
+                cjh(:, :, nf, j) = cjh_;
+                Rh = (I - Wj)*Rcj(:, :,nf,j);
+                Rcjh_ = cjh_ * cjh_' + Rh;
+                Rcjh_ = (Rcjh_ + permute(Rcjh_, [2,1,3]))/2;
+                Rcjh(:, :,nf,j) = Rcjh_;
 
-    
-    %% M-step
-    Rj = zeros(n_c, n_c, NF, J);
-    for j = 1:J
-        for nf = 1:NF
-            Rj(:, :, NF, J) = Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
+                %"calc. log P(cj|x; theta_hat), using log to avoid inf problem%" 
+                % R = (Rcj**-1 + (Rx-Rcj)**-1)**-1 = (I - Wj)Rcj, The det of a Hermitian matrix is real
+                logp(nf,j) = -0.5*log(det(2*pi*Rh));% cj=cjh, e^(0), shape of [n_batch, n_s, n_f, n_t,]
+            end
         end
-            Rj = sum(Rj, 3)/NF;
-        modelj = models{j};
-        gammaj = gamma{j};
-        vj[:,:, j] = modelj();
-        [loss, Rx, Rcj] = loss_func(logp, x, cjh, vj, Rj); % model param is fixed
-    end
+
+
+        %% M-step
+        %update Rj
+        Rj = zeros(n_c, n_c, NF, J);
+        for j = 1:J
+            for nf = 1:NF
+                Rj(:, :, NF, J) = Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
+            end
+            Rj = sum(Rj, 3)/NF;  % shape of [n_c, n_c, J]
+        end
+
+        % update vj
+        % to get gradiant, using a func is a must
+        [loss,gradval, Rx, Rcj] = ...
+        dlfeval(@loss_func, x, cjh, model, gammaj, Rj, opts);
 
     end
     
@@ -98,5 +99,5 @@ neural_net = trainNetwork(ds,lgraph,options);
 end
 
    
-end
+end %end of the file
 
