@@ -73,11 +73,12 @@ for epoch = 1:opts.iter
     Rj = zeros(n_c, n_c, NF, J);
     for j = 1:J
         for nf = 1:NF
-            Rj(:, :, NF, J) = (Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
+            Rj(:, :, NF, J) = Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
         end
             Rj = sum(Rj, 3)/NF;
-        model = models{j};
-        vj[:,:, j] = model(gammaj[:,:,j]);
+        modelj = models{j};
+        gammaj = gamma{j};
+        vj[:,:, j] = modelj();
         [loss, Rx, Rcj] = loss_func(logp, x, cjh, vj, Rj); % model param is fixed
     end
 
