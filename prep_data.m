@@ -16,7 +16,7 @@ close all
 
 addpath('func')
 rng(0)
-visualize = 1;
+visualize = 0;
 
 %% load the original data
 importfile('/home/chenhao1/Matlab/nem_ss/data/vj1.png');

@@ -45,7 +45,5 @@ model = 0;
 %% train NEM
 x = reshape(xnf', [opts.n_c, 1,NF]);
 v = reshape(sum(abs(x).^2/n_channel, 1), [1,1, NF]);
-[vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
-
- %% test data
-[vj, cj, Rj, neural_net] = test_NEM(v, x, neural_net, opts);
+% [vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
+[vj, cj, Rj] = EM(x, v, model, opts);
