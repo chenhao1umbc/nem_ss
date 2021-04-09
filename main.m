@@ -6,6 +6,7 @@ close all
 addpath('func')
 rng(1)
 %% code for generate online data with diff powers and various ang 
+% check prep_data.m for more information
 load('./data/vj.mat')
 J = size(vj,3); % how many sources, J =3
 max_db = 20;
@@ -16,10 +17,8 @@ power_db = rand(1, 3)*max_db; % power diff for each source
 steer_vec = get_steer_vec(aoa, n_channel, J);
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
-    temp = vj(:,:,j);
-    st_sq = steer_vec(j,:).^2;
-    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
-    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
+    temp = vj(:,:,j).^0.5;
+    cjnf(:, :, j) = temp(:)./steer_vec(j,:);
 end
 for j = 1:J
     cjnf(:,:,j) = 10^(power_db(j)/20) * cjnf(:, :, j);
@@ -47,3 +46,4 @@ x = reshape(xnf', [opts.n_c, 1,NF]);
 v = reshape(sum(abs(x).^2/n_channel, 1), [1,1, NF]);
 % [vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
 [vj, cj, Rj] = EM(x, v, model, opts);
+

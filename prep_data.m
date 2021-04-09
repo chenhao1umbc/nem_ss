@@ -67,18 +67,20 @@ n_channel = 3;
 J = 3; % how many sources
 
 aoa = [20, 45, 70]; % in degrees, for each source
-steer_vec = get_steer_vec(aoa, n_channel, J);
+steer_vec = get_steer_vec(aoa, n_channel, J);  % shape [source, channel]
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
-    temp = vj(:,:,j);
-    st_sq = steer_vec(j,:).^2;
-    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
-    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
+%     temp = vj(:,:,j);
+%     st_sq = steer_vec(j,:).^2;
+%     cj_nf = (temp(:)./st_sq).^0.5; %x >=0
+%     cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
+    temp = vj(:,:,j).^0.5;
+    cjnf(:, :, j) = temp(:)./steer_vec(j,:);
 end
 
 % check if vj can be calculated from cjnf
 for j = 1:3
-v = reshape(sum(abs(cjnf(:,:,j)).^2/n_channel, 2), [50, 50]);
+v = reshape(sum(abs(cjnf(:,:,j).*steer_vec(j,:)).^2/n_channel, 2), [50, 50]);
 fprintf('check the difference between generated vj and origianl one')
 difference = sum(abs(v -vj(:, :, j)) , 'all')  % should be 0
 end
@@ -112,10 +114,8 @@ power_db = rand(1, 3)*max_db; % power diff for each source
 steer_vec = get_steer_vec(aoa, n_channel, J);
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
-    temp = vj(:,:,j);
-    st_sq = steer_vec(j,:).^2;
-    cj_nf = (temp(:)./st_sq).^0.5; %x >=0
-    cjnf(:, :, j) = cj_nf.* sign(rand(50*50, n_channel)-0.5).*steer_vec(j,:);
+    temp = vj(:,:,j).^0.5;
+    cjnf(:, :, j) = temp(:)./steer_vec(j,:);
 end
 for j = 1:J
     cjnf(:,:,j) = 10^(power_db(j)/20) * cjnf(:, :, j);
