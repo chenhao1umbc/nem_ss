@@ -14,7 +14,7 @@ n_channel = 3;
 reproduce_pytorch = false;
 
 if reproduce_pytorch
-n_channel = 3; % more code in EM.m
+    n_channel = 3; % more code in EM.m, line 27-34
 end
 %% generate data
 aoa = (rand(1,J)-0.5)*90; % in degrees
@@ -32,6 +32,7 @@ xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
 
 %% load options
 [N, F, NF] = deal(50, 50, 2500);
+opts.reproduce_pytorch = reproduce_pytorch;
 opts.n_c = n_channel;  % n_channel=3
 opts.J = 3; % how many sources
 opts.N = N;
@@ -50,3 +51,6 @@ v = reshape(vj, [NF, J]); %ground truth
 % [vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
 [vj, cj, Rj] = EM(x, v, opts);
 
+figure; imagesc(reshape(cj(1,1,:, 1), 50, 50))
+figure; imagesc(reshape(cj(1,1,:, 2), 50, 50))
+figure; imagesc(reshape(cj(1,1,:, 3), 50, 50))

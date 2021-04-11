@@ -23,14 +23,15 @@ vj = exp(rand( NF, J)/10);
 % for j = 1:J
 %     vj(:, j) = sum(v, 2)/J;
 % end
+% vj = awgn(v, 10);
 
-if reproduce_pytorch
-% % reproduce the pytorch result channel=3
-load('toy1.mat')
-x = reshape(x, [opts.n_c, 1,NF]);
-load('vj.mat')
-vj = reshape(vj, [J, NF]);
-vj = vj';
+if opts.reproduce_pytorch
+    % % reproduce the pytorch result channel=3
+    load('toy1.mat')
+    x = reshape(x, [opts.n_c, 1,NF]);
+    load('vj.mat')
+    vj = reshape(vj, [J, NF]);
+    vj = vj';
 end
 
 % init Rj
