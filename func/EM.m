@@ -15,44 +15,52 @@ NF = opts.NF;
 J = opts.J;
 NFJ = NF * J;
 eps = opts.eps;
-klog2pi_2 = 2.756815;  % 3*log(pi*2)*0.5
+klog2pi_2 = n_c*log(pi*2)*0.5;  % 3*log(pi*2)*0.5
 
 % init vj
-vj = zeros(1, 1, NF, J);
-for j = 1:J
-    vj(:, :, :, j) = v;
+vj = exp(rand( NF, J)/10);
+% vj = v;
+% for j = 1:J
+%     vj(:, j) = sum(v, 2)/J;
+% end
+
+if reproduce_pytorch
+% % reproduce the pytorch result channel=3
+load('toy1.mat')
+x = reshape(x, [opts.n_c, 1,NF]);
+load('vj.mat')
+vj = reshape(vj, [J, NF]);
+vj = vj';
 end
-vj = reshape(vj, [NFJ,1]);
 
 % init Rj
-Rj = zeros(n_c, n_c, NFJ);
-for nfj = 1:NFJ
-    Rj(:,:,nfj) = eye(n_c);
+Rj = zeros(n_c, n_c, J);
+for j = 1:J
+    Rj(:,:,j) = eye(n_c);
 end
 
 % init Rcj
-Rcj = zeros(n_c, n_c, NFJ);
-for nfj = 1: NFJ
-    Rcj(:,:, nfj) = (vj(nfj)+eps) * Rj(:, :, nfj);
+Rcj = zeros(n_c, n_c, NF, J);
+for j = 1:J
+    for nf = 1:NF
+        Rcj(:,:, nf, j) = (vj(nf,j)+eps) * Rj(:, :, j);
+    end
 end
-Rcj = reshape(Rcj, [n_c, n_c, NF, J]);
 
-% init Rx, shape of [n_c, n_c, NF]
-Rx = sum(Rcj, 4);
-Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
-
-%%init cjh, I
+% init cjh, I
 cjh = zeros(n_c, 1, NF, J);
 Rcjh = Rcj;
 I = eye(n_c,n_c);
-Rj = reshape(Rj,[n_c, n_c, NF, J]);
 vj = reshape(vj, NF, J);
 log_l = zeros(opts.iter, 1);
+loss = zeros(opts.iter, 1);
+
 
 %%
 for epoch = 1:opts.iter
     %% E-step
-    %"Calc. Wiener Filter%" shape of [n_c, n_c, NF, J]
+    Rx = sum(Rcj, 4);  % the last dimension is gone, shape of [n_c, n_c, NF]
+    Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
     for j = 1:J
         for nf = 1:NF
             Wj = Rcj(:, :,nf,j) * inv(Rx(:, :,nf));
@@ -61,43 +69,47 @@ for epoch = 1:opts.iter
             Rh = (I - Wj)*Rcj(:, :,nf,j);
             Rcjh_ = cjh_ * cjh_' + Rh;
             Rcjh_ = (Rcjh_ + permute(Rcjh_, [2,1,3]))/2;
-            Rcjh(:, :,nf,j) = Rcjh_;
+            Rcjh(:, :,nf,j) = Rcjh_; %shape of [n_c, n_c, NF, J]
         end
     end
-    Rx = sum(Rcj, 4);
-    Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
     log_l(epoch) = log_likelihood(x, Rx); 
 
     %% M-step
     %update Rj
+    Rj = zeros(n_c, n_c, NF, J);
     for j = 1:J
         for nf = 1:NF
-            Rj(:, :, NF, J) = Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
+            Rj(:, :, nf, j) = Rcjh(:, :, nf, j)/(vj(nf, j)+eps);
         end
-        Rj = sum(Rj, 3)/NF;  % shape of [n_c, n_c, J]
     end
+    Rj = squeeze(sum(Rj, 3)/NF);% shape of [n_c, n_c, J]
+
     % update vj shape of [NF, J]
     for j = 1:J
         for nf = 1:NF
-            Rj_inv = Rj(:, :, nf, J);
-            temp = Rj_inv * Rcjh(:, :, nf, J);
-            vj(nf, j) = sum(diag(temp));
+            Rj_inv = inv(Rj(:, :, j));
+            temp = Rj_inv * Rcjh(:, :, nf, j);
+            vj(nf, j) = sum(diag(temp))/n_c;
         end
     end
     
-    % calc loss function(-Q) and 
+    % calc loss function(-Q)
+    % complex data       p(x;0,Rx) = \Pi_{n,f} 1/det(pi*Rx) e^{-x^H Rx^{-1} x}
+    % here for real data p(x;0,Rx) = \Pi_{n,f} 1/det(2*pi*Rx)**0.5 e^{-0.5*x^T Rx^{-1} x}
+    l = 0;
     for j = 1:J
         for nf = 1:NF
-            Rcj(:,:, nf, j) = (vj(nf,j)+eps) * Rj(:, :, nf,j);
-            Rcj_inv = inv(Rcj(:, :, nf, J));
-            temp = Rcjh(:, :, nf, J)*Rcj_inv;
-            p1 = sum(diag(temp));
-            
+            Rcj(:,:, nf, j) = (vj(nf,j)+eps) * Rj(:, :, j);
+            Rcj(:,:, nf, j) = (Rcj(:,:, nf, j)+ Rcj(:,:, nf, j)')/2;
+            Rcj_inv = inv(Rcj(:, :, nf, j));
+            temp = Rcjh(:, :, nf, j)*Rcj_inv;
+            p1 = 0.5*sum(diag(temp));
+            p2 = klog2pi_2 + 0.5*log(det(Rcj(:,:,nf,j))+eps);
+            l = l + p1 + p2;
         end
     end
+    loss(epoch) = l;
     
-    logpz = 0.5*(Rcjh@Rcj.inverse()).diagonal(dim1=-2, dim2=-1).sum(-1) \
-        + 0.5*(Rcj.det() + 1e-30).log() + klog2pi_2
 end
 
    

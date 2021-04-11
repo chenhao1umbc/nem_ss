@@ -6,12 +6,13 @@ function log_l = log_likelihood(x, Rx)
 % Rx shape of [n_c, n_c, NF]
 
 eps = 1e-30;
-klog2pi_2 = 2.756815;  % 3*np.log(np.pi*2)*0.5
+[n_c, ~, ~] = size(x);
+klog2pi_2 = n_c*log(pi*2)*0.5;  % 3*np.log(np.pi*2)*0.5
 NF = size(x, 3);
 P = zeros(NF, 1);
 
 for nf = 1:NF
-    p1 = -0.5*log(det(Rx(:,:,nf))+ eps) - klog2pi_2;
+    p1 = -0.5*log(det(Rx(:,:,nf)) + eps) - klog2pi_2;
     Rx_inv = inv(Rx(:,:,nf));
     p2 = -0.5 *x(:,:,nf)' * Rx_inv * x(:,:,nf);
     P(nf) = p1 + p2;

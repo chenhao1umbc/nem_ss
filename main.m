@@ -11,9 +11,14 @@ load('./data/vj.mat')
 J = size(vj,3); % how many sources, J =3
 max_db = 20;
 n_channel = 3;
+reproduce_pytorch = false;
 
+if reproduce_pytorch
+n_channel = 3; % more code in EM.m
+end
+%% generate data
 aoa = (rand(1,J)-0.5)*90; % in degrees
-power_db = rand(1, 3)*max_db; % power diff for each source
+power_db = rand(1, J)*max_db; % power diff for each source
 steer_vec = get_steer_vec(aoa, n_channel, J);
 cjnf = zeros(50*50, n_channel, J); % [N*F, n_channel, n_sources]
 for j = 1:J
@@ -25,25 +30,23 @@ for j = 1:J
 end
 xnf = sum(cjnf, 3); % sum over all the sources, shape of [N*F, n_channel]
 
-
 %% load options
 [N, F, NF] = deal(50, 50, 2500);
 opts.n_c = n_channel;  % n_channel=3
-opts.iter = 200;
 opts.J = 3; % how many sources
 opts.N = N;
 opts.F = F;
 opts.NF = NF;
 opts.eps = 1e-30;
+opts.iter = 100;
 
 
 %% load neural network
 % model = init_neural_network(opts);
-model = 0;
 
 %% train NEM
 x = reshape(xnf', [opts.n_c, 1,NF]);
-v = reshape(sum(abs(x).^2/n_channel, 1), [1,1, NF]);
+v = reshape(vj, [NF, J]); %ground truth
 % [vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
-[vj, cj, Rj] = EM(x, v, model, opts);
+[vj, cj, Rj] = EM(x, v, opts);
 
