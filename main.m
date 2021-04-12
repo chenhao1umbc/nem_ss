@@ -4,13 +4,13 @@ clc
 close all
 
 addpath('func')
-rng(1)
+rng(0)
 %% code for generate online data with diff powers and various ang 
 % check prep_data.m for more information
 load('./data/vj.mat')
 J = size(vj,3); % how many sources, J =3
 max_db = 20;
-n_channel = 3;
+n_channel = 5;
 reproduce_pytorch = false;
 
 if reproduce_pytorch
@@ -51,6 +51,18 @@ v = reshape(vj, [NF, J]); %ground truth
 % [vj, cj, Rj, neural_net] = train_NEM(x, v, model, opts);
 [vj, cj, Rj] = EM(x, v, opts);
 
-figure; imagesc(reshape(cj(1,1,:, 1), 50, 50))
-figure; imagesc(reshape(cj(1,1,:, 2), 50, 50))
-figure; imagesc(reshape(cj(1,1,:, 3), 50, 50))
+
+figure;
+for j = 1:J
+subplot(1,4,j)
+imagesc(reshape(cj(1,1,:, j), 50, 50))
+title(['The first channel of Source-', num2str(j), ' cj'])
+colorbar;
+caxis([0,max(x(1,1,:), [], 'all')])
+end
+subplot(1,4,4)
+imagesc(reshape(x(1,1,:), 50, 50))
+title(['The first channel of given mixture xnf'])
+colorbar;
+caxis([0,max(x(1,1,:), [], 'all')])
+

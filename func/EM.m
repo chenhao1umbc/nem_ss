@@ -18,12 +18,12 @@ eps = opts.eps;
 klog2pi_2 = n_c*log(pi*2)*0.5;  % 3*log(pi*2)*0.5
 
 % init vj
-vj = exp(rand( NF, J)/10);
-% vj = v;
+% vj = exp(rand(NF, J)/10);
+vj = v;
 % for j = 1:J
 %     vj(:, j) = sum(v, 2)/J;
 % end
-% vj = awgn(v, 10);
+vj = abs(awgn(vj, 10));
 
 if opts.reproduce_pytorch
     % % reproduce the pytorch result channel=3
@@ -113,6 +113,13 @@ for epoch = 1:opts.iter
     
 end
 
+figure;
+for j = 1:J
+subplot(1,3,j)
+imagesc(reshape(vj(:,j), 50, 50));
+title(['Source-', num2str(j), ' vj'])
+colorbar;
+end
    
 end %end of the file
 
