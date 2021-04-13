@@ -20,9 +20,9 @@ klog2pi_2 = n_c*log(pi*2)*0.5;  % 3*log(pi*2)*0.5
 % init vj
 % vj = exp(rand(NF, J)/10);
 vj = v;
-% for j = 1:J
-%     vj(:, j) = sum(v, 2)/J;
-% end
+for j = 1:J
+    vj(:, j) = sum(v, 2)/J;
+end
 % vj = abs(awgn(vj, 10));
 
 if opts.reproduce_pytorch
