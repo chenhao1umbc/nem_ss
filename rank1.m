@@ -1,4 +1,4 @@
-function [vj, cjh, Rj] = EM(x, v, opts)
+function [vj, cjh, Rj] = rank1(x, v, opts)
 % This function is the main body of the algorithm
 % x is shape of [n_c, 1, NF]
 % v is shape of [1, 1, NF]
@@ -60,20 +60,20 @@ loss = zeros(opts.iter, 1);
 %%
 for epoch = 1:opts.iter
     %% E-step
-    Rx = sum(Rcj, 4);  % the last dimension is gone, shape of [n_c, n_c, NF]
-    Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
-    for j = 1:J
-        for nf = 1:NF
-            Wj = Rcj(:, :,nf,j) * inv(Rx(:, :,nf));
-            cjh_ = Wj * x(:,:,nf);
-            cjh(:, :, nf, j) = cjh_;
-            Rh = (I - Wj)*Rcj(:, :,nf,j);
-            Rcjh_ = cjh_ * cjh_' + Rh;
-            Rcjh_ = (Rcjh_ + permute(Rcjh_, [2,1,3]))/2;
-            Rcjh(:, :,nf,j) = Rcjh_; %shape of [n_c, n_c, NF, J]
-        end
-    end
-    log_l(epoch) = log_likelihood(x, Rx); 
+%     Rx = sum(Rcj, 4);  % the last dimension is gone, shape of [n_c, n_c, NF]
+%     Rx = (Rx + permute(Rx, [2,1,3]))/2;  % make symetric
+%     for j = 1:J
+%         for nf = 1:NF
+%             Wj = Rcj(:, :,nf,j) * inv(Rx(:, :,nf));
+%             cjh_ = Wj * x(:,:,nf);
+%             cjh(:, :, nf, j) = cjh_;
+%             Rh = (I - Wj)*Rcj(:, :,nf,j);
+%             Rcjh_ = cjh_ * cjh_' + Rh;
+%             Rcjh_ = (Rcjh_ + permute(Rcjh_, [2,1,3]))/2;
+%             Rcjh(:, :,nf,j) = Rcjh_; %shape of [n_c, n_c, NF, J]
+%         end
+%     end
+%     log_l(epoch) = log_likelihood(x, Rx); 
 
     %% M-step
     %update Rj

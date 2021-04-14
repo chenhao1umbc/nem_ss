@@ -25,6 +25,7 @@ for j = 1:J
 %     temp = rand(n_channel,1);
     Rj(:,:,j) = temp*temp';
     Rj(:,:,j) = Rj(:,:,j)/ norm(Rj(:,:,j), 'fro');
+%     rank(Rj(:,:,j))
     
     for f = 1:50
         for n = 1:50
@@ -49,7 +50,6 @@ opts.F = F;
 opts.NF = NF;
 opts.eps = eps;
 opts.iter = 100;
-
 
 %% train NEM
 x = reshape(xnf, [opts.n_c, 1,NF]);

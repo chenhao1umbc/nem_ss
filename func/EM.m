@@ -23,7 +23,7 @@ vj = v;
 % for j = 1:J
 %     vj(:, j) = sum(v, 2)/J;
 % end
-% vj = abs(awgn(vj, 10));
+vj = abs(awgn(vj, 10, 'measured'));
 
 if opts.reproduce_pytorch
     % % reproduce the pytorch result channel=3
@@ -38,6 +38,7 @@ end
 Rj = zeros(n_c, n_c, J);
 for j = 1:J
     Rj(:,:,j) = eye(n_c);
+%     Rj(:,:,j) = diag(rand(1,n_c));
 end
 
 % init Rcj
