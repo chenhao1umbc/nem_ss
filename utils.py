@@ -429,8 +429,11 @@ def load_data(data='toy1'):
     """
     if data == 'toy1':
         x = torch.load('./data/x_toy1.pt')  # 20k samples, shape of [i, f, t, channel]
-        v = (x.abs()**2).sum(-1).unsqueeze(1)
-        v = torch.cat(3*[v], 1)
+        d = sio.loadmat('./data/vj.mat')
+        v = torch.tensor(d['vj']).float().permute(2, 0, 1)
+        # cj = torch.load('./data/cj_toy1.pt')
+        # v = (x.abs()**2).sum(-1).unsqueeze(1)
+        # v = torch.cat(3*[v], 1)
         return x, v
 
     elif data == 'toy2':
@@ -454,7 +457,7 @@ def init_neural_network(opts):
     return m
 
 
-def train_NEM(X, V, models, opts):
+def train_NEM(X, v, models, opts):
     """This function is the main body of the training algorithm of NeuralEM for Source Separation
 
     Args:
@@ -464,7 +467,7 @@ def train_NEM(X, V, models, opts):
         n is frame(time) index, total of n_t
         m is channel index, total of n_c
 
-        V ([real tensor]): [the initial PSD of each mixture sample, shape of [n_i, n_s, n_f, n_t]]
+        v ([real tensor]): [the ground-truth v, shape of [n_s, n_f, n_t]]
         X ([complex tensor]): [training mixture samples, shape of [n_i, n_f, n_t, n_c]]
         model ([neural network]): [neural network with random initials]
         opts ([dictionary]): [parameters are contained]
@@ -476,48 +479,36 @@ def train_NEM(X, V, models, opts):
         model is updated neural network
 
     """
-    n_s = V.shape[1]
+
+    if torch.cuda.is_available(): v = v.cuda()
+    n_s = v.shape[0]
     n_i, n_f, n_t, n_c =  X.shape 
     eps = 1e-30  # no smaller than 1e-38
-    tr = wrap(X, V, opts)  # tr is a data loader
+    tr = wrap(X, opts)  # tr is a data loader
     optimizers = {}
     for j in range(n_s):
-        # optimizers[j] = optim.RAdam(
-        #             models[j].parameters(),
-        #             lr= opts['lr'],
-        #             betas=(0.9, 0.999),
-        #             eps=1e-8,
-        #             weight_decay=0)
-        optimizers[j] = torch.optim.SGD(models[j].parameters(), lr= opts['lr'])
-
-    loss_train = []
-    loss_cv = []
+        optimizers[j] = optim.RAdam(
+                    models[j].parameters(),
+                    lr= opts['lr'],
+                    betas=(0.9, 0.999),
+                    eps=1e-8,
+                    weight_decay=0)
+        # optimizers[j] = torch.optim.SGD(models[j].parameters(), lr= opts['lr'])
+    loss_train = []  # per EM
+    loss_cv = [] # per iteration
 
     for epoch in range(opts['n_epochs']):    
-        for i, (x, v) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
+        for i, (x,) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
             n_batch = x.shape[0]
+            v = torch.cat(n_batch*[v[None,...]], 0)
             I =  torch.ones(n_batch, n_s, n_f, n_t, n_c).diag_embed()
-            if torch.cuda.is_available(): 
-                # gammaj = torch.rand(n_batch, n_s, opts['d_gamma'],\
-                #      opts['d_gamma']).cuda().requires_grad_()
-                gammaj = (v/v.norm()).cuda().requires_grad_()
-            else:
-                # gammaj = torch.rand(n_batch, n_s, opts['d_gamma'],\
-                #      opts['d_gamma']).requires_grad_()
-                gammaj = (v/v.norm()).requires_grad_()
             likelihood = torch.zeros(opts['n_iter'])
-            optim_gamma = torch.optim.SGD([gammaj], lr= opts['lr'])
-            for j in range(n_s):
-                models[j].eval()
-                for param in models[j].parameters():
-                    param.requires_grad = False
 
             "Initialize spatial covariance matrix"
             Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed()
             "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
-            vj = torch.rand(n_batch, n_s, n_f, n_t)
-            for j in range(n_s):
-                vj[:, j] = models[j](gammaj[:, j][:,None]).cpu().detach().exp().squeeze()
+            temp = (x.squeeze().abs()**2).sum(-1)/n_c
+            vj = torch.cat(n_s*[temp[:,None]], 1)
             Rcj = ((vj+eps) * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
             "Compute mixture covariance"
             Rx = Rcj.sum(1)  #shape of [n_batch, n_f, n_t, n_c, n_c]
@@ -547,37 +538,21 @@ def train_NEM(X, V, models, opts):
                 "cal spatial covariance matrix" # Rj shape of [n_batch, n_s, 1, 1, n_c, n_c]                
                 Rj = ((Rcjh/(vj.detach().cpu()+eps)[...,None, None]).sum((2,3))/n_t/n_f)[:,:,None,None]
                 "Back propagate to update the input of neural network"
-                vj = torch.rand(n_batch, n_s, n_f, n_t)
-                for j in range(n_s):
-                    vj[:, j] = models[j](gammaj[:, j][:,None]).exp().squeeze() #shape of [n_batch, n_s, n_f, n_t ]
-                loss, Rx, Rcj = loss_func(Rcjh, vj, Rj, x, cjh) # model param is fixed
-                loss_train.append(loss.data.item())
-                optim_gamma.zero_grad()                
-                loss.backward()
-                optim_gamma.step()
-                torch.cuda.empty_cache()        
+                vj = (Rj.inverse() @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
 
-            #%% the neural network step
-            gammaj.requires_grad_(False)
-            for j in range(n_s):
-                vj = vj.detach()
-                for param in models[j].parameters():
-                    param.requires_grad = True
-                if j == 0: jp = [1, 2]
-                if j == 1: jp = [0, 2]
-                if j == 2: jp = [0, 1]
-                for jj in jp: # only update one model
-                    for param in models[jj].parameters():
-                        param.requires_grad = False
-                
-                models[j].train()
-                vj[:, j] = models[j](gammaj[:, j][:,None]).exp().squeeze()          
-                loss, *_ = loss_func(Rcjh, vj, Rj, x, cjh) # gamma is fixed    
-                loss_cv.append(loss.data.item())      
-                optimizers[j].zero_grad()   
-                loss.backward()
-                optimizers[j].step()
-                torch.cuda.empty_cache()
+                # update the model on GPU
+                if torch.cuda.is_available(): vj = vj.cuda()
+                for j in range(n_s):                    
+                    res = models[j](vj[:,j][:,None]).exp().squeeze() 
+                    vj[:, j] = res.detach().cpu()
+                    loss = ((res - v[:, j])**2).sum()
+                    optimizers[j].zero_grad()   
+                    loss.backward()
+                    optimizers[j].step()
+                    torch.cuda.empty_cache()
+                    loss_train.append(loss.data.item()) 
+                loss, *_ = loss_func(Rcjh, vj, Rj, x, cjh) # gamma is fixed
+                loss_cv.append(loss.data.item())  
             if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
 
         if epoch%1 ==0:
@@ -623,7 +598,7 @@ def train_NEM_plain(X, V, opts):
     n_s  = V.shape[1]
     n_i, n_f, n_t, n_c = X.shape 
     eps = 1e-30  # no smaller than 1e-45
-    tr = wrap(X, V, opts)  # tr is a data loader
+    tr = wrap(X, opts, V)  # tr is a data loader
     loss_train = []
     likelihood = []
     _, v = next(iter(tr))
@@ -713,16 +688,17 @@ def loss_func(Rcjh, vj, Rj, x, cjh):
         not Q = E[log(x, z; theta) | x; theta_old]
     """
     eps = 1e-30
+    I =  torch.ones(cjh.shape[:-1]).diag_embed()
     if torch.cuda.is_available():
         Rcjh, vj, Rj =  Rcjh.cuda(), vj.cuda(), Rj.cuda()
-        x, cjh = x.cuda(), cjh.cuda()
+        x, cjh, I = x.cuda(), cjh.cuda(), I.cuda()
 
     Rcj = ((vj+eps) * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape of [n_batch, n_s, n_f, n_t, n_c, n_c]
     Rcj = (Rcj + Rcj.transpose(-1, -2))/2  # make sure it is hermitian (symetrix conj)
+    Rcj = eps*I + Rcj  # make sure Rcj invertable
     "Compute mixture covariance"
     Rx = Rcj.sum(1)  #shape of [n_batch, n_f, n_t, n_c, n_c]
     Rx = (Rx + Rx.transpose(-1, -2))/2  # make sure it is hermitian (symetrix conj)
-    R = Rx[:, None] - Rcj
 
     "Calc. -Q function value"
     logpz = 0.5*(Rcjh@Rcj.inverse()).diagonal(dim1=-2, dim2=-1).sum(-1) \
@@ -745,11 +721,14 @@ def check_stop(loss):
     return rr
 
 
-def wrap(x, v, opts):
+def wrap(x, opts, v=0,):
     """Wrap X and V for training or testing, in a batch manner
     """
     x = x.unsqueeze_(-1)
-    data = Data.TensorDataset(x, v)
+    if v == 0:  
+        data = Data.TensorDataset(x)
+    else:
+        data = Data.TensorDataset(x, v)
     data = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=False)
     return data
 
@@ -809,3 +788,4 @@ def get_steer_vec(aoa, n_channel, J=3):
         vec = sv.real + eps
         steer_vec[i, :] = vec/ vec.norm()
     return steer_vec
+# %%

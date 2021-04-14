@@ -36,27 +36,27 @@ v = ((cjnf*steer_vec[:, None, None, :])**2).sum(-1)/n_channel
 """
 
 d = sio.loadmat('./data/vj.mat')
-vj = torch.tensor(d['vj']).float()
-J = vj.shape[-1] # how many sources, J =3
+vj = torch.tensor(d['vj']).float().permute(2, 0, 1)
+J = vj.shape[0] # how many sources, J =3
 max_db = 20
 n_channel = 3
+eps = 1e-30
 
-N = 20000
+N = 10000
 x = torch.zeros(N, 50, 50, 3)
-cj = torch.zeros(N, n_channel, 50, 50, 3)
-for i in range(N):
-    aoa = (torch.rand(J)-0.5)*90 # in degrees
-    power_db = torch.rand(J)*max_db # power diff for each source
-    steer_vec = get_steer_vec(aoa, n_channel, J)  # shape of [n_sources, n_channel]
-    cjnf = vj**0.5 * 1/steer_vec.t()[:, None, None, :]# shape of [n_channel, F, T, n_sources]
-    cjnf = 10**(power_db[None, None, :]/20) * cjnf
-    cjnf = cjnf.permute(3,1,2,0)  # shape as [n_sources, F, T, n_channel]
-    xnf = cjnf.sum(0) # sum over all the sources, shape of [F, T, n_channel]
+cjnf = torch.zeros(N, n_channel, 50, 50, 3)
+mean = np.zeros([n_channel])
 
-    x[i] = xnf
-    cj[i] = cjnf
-# torch.save(x, 'x_toy1.pt')
-# torch.save(cj, 'cj_toy1.pt')
+for j in range(J):
+    Rj = torch.rand(n_channel, n_channel)
+    Rj = Rj @ Rj.transpose(-1, -2)
+    for f in range(50):
+        for n in range(50):
+                Rcj = (vj[j, f, n] +eps)* Rj
+                cjnf[:, j, f, n, :]= torch.tensor(np.random.multivariate_normal(mean, Rcj, size=N))
+
+torch.save(x, 'x_toy1.pt')
+torch.save(cjnf, 'cj_toy1.pt')
 
 # %% toy experiment 2
 d = sio.loadmat('./data/vj.mat')
