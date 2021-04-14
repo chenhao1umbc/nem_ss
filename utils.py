@@ -507,7 +507,7 @@ def train_NEM(X, v, models, opts):
             "Initialize spatial covariance matrix"
             Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed()
             "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
-            temp = (x.squeeze().abs()**2).sum(-1)/n_c
+            temp = x.squeeze().abs().sum(-1)/n_c
             vj = torch.cat(n_s*[temp[:,None]], 1)
             Rcj = ((vj+eps) * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
             "Compute mixture covariance"

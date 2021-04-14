@@ -43,8 +43,8 @@ n_channel = 3
 eps = 1e-30
 
 N = 10000
-x = torch.zeros(N, 50, 50, 3)
-cjnf = torch.zeros(N, n_channel, 50, 50, 3)
+x = torch.zeros(N, 50, 50, n_channel)
+cjnf = torch.zeros(N, J, 50, 50, n_channel)
 mean = np.zeros([n_channel])
 
 for j in range(J):
@@ -54,7 +54,7 @@ for j in range(J):
         for n in range(50):
                 Rcj = (vj[j, f, n] +eps)* Rj
                 cjnf[:, j, f, n, :]= torch.tensor(np.random.multivariate_normal(mean, Rcj, size=N))
-
+x = cjnf.sum(1)
 torch.save(x, 'x_toy1.pt')
 torch.save(cjnf, 'cj_toy1.pt')
 
