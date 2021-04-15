@@ -30,7 +30,7 @@ torch.backends.cudnn.benchmark = False
 klog2pi_2 = 2.756815  # 3*np.log(np.pi*2)*0.5
 
 #%%
-def load_options(n_s=2, n_epochs=5, n_batch=32, EM_iter=5):
+def load_options(n_s=2, n_epochs=25, n_batch=32, EM_iter=5):
     """[set all the parameters]
 
     Args:
@@ -568,11 +568,25 @@ def train_NEM(X, v, models, opts):
             plt.title('val loss per epoch')
             plt.show()
 
-        #%% Check convergence
-        "if loss_cv consecutively going up for 5 epochs --> stop"
-        if check_stop(loss_cv):
-            break
-    return cjh, vj, Rj, models
+            plt.figure()
+            plt.imshow(out[0,0].cpu())
+            plt.colorbar()
+            plt.title('vj-1 in the first sample')
+            plt.figure()
+            plt.imshow(out[0,1].cpu())
+            plt.colorbar()
+            plt.title('vj-2 in the first sample')
+            plt.figure()
+            plt.imshow(out[0,2].cpu())
+            plt.colorbar()
+            plt.title('vj-3 in the first sample')
+            plt.show()
+
+        # #%% Check convergence
+        # "if loss_cv consecutively going up for 5 epochs --> stop"
+        # if check_stop(loss_cv):
+        #     break
+    return cjh, vj, Rj, models, loss_cv
 
 
 
