@@ -490,7 +490,7 @@ def train_NEM(X, v, models, opts):
     tr = wrap(X, opts)  # tr is a data loader
 
     "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
-    x = next(iter(tr))
+    x = next(iter(tr))[0]
     v = torch.cat(n_batch*[v[None,...]], 0)
     temp = x.squeeze().abs().sum(-1)/n_c
     vj = torch.cat(n_s*[temp[:,None]], 1)
