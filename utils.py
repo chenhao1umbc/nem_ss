@@ -494,7 +494,6 @@ def train_NEM(X, v, models, opts):
                     eps=1e-8,
                     weight_decay=0)
         # optimizers[j] = torch.optim.SGD(models[j].parameters(), lr= opts['lr'])
-    loss_train = []  # per EM
     loss_cv = [] # per iteration
 
     for epoch in range(opts['n_epochs']):    
@@ -542,15 +541,21 @@ def train_NEM(X, v, models, opts):
 
                 # update the model on GPU
                 if torch.cuda.is_available(): vj = vj.cuda()
-                for j in range(n_s):                    
-                    res = models[j](vj[:,j][:,None]).exp().squeeze() 
-                    vj[:, j] = res.detach().cpu()
-                    loss = ((res - v[:, j])**2).sum()
-                    optimizers[j].zero_grad()   
-                    loss.backward()
-                    optimizers[j].step()
-                    torch.cuda.empty_cache()
-                    loss_train.append(loss.data.item()) 
+                out = vj.clone()
+                loss_train = torch.rand(n_s)/eps # per EM
+                while loss_train.max() >= (v.cpu()**2).sum()/100:
+                    for j in range(n_s):                    
+                        temp = models[j](vj[:,j][:,None]).exp().squeeze() 
+                        loss = ((temp - v[:, j])**2).sum()
+                        optimizers[j].zero_grad()   
+                        loss.backward()
+                        torch.nn.utils.clip_grad_norm_(models[j].parameters(), max_norm=500)
+                        optimizers[j].step()
+                        torch.cuda.empty_cache()
+
+                        loss_train[j] = loss.data.cpu().item()
+                        out[:, j] = temp.detach()
+                vj = out.clone()
                 loss, *_ = loss_func(Rcjh, vj, Rj, x, cjh) # gamma is fixed
                 loss_cv.append(loss.data.item())  
             if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
