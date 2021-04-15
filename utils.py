@@ -489,6 +489,12 @@ def train_NEM(X, v, models, opts):
     likelihood = torch.zeros(opts['n_iter'])
     tr = wrap(X, opts)  # tr is a data loader
 
+    "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
+    x = next(iter(tr))
+    v = torch.cat(n_batch*[v[None,...]], 0)
+    temp = x.squeeze().abs().sum(-1)/n_c
+    vj = torch.cat(n_s*[temp[:,None]], 1)
+
     optimizers = {}
     for j in range(n_s):
         optimizers[j] = optim.RAdam(
@@ -502,11 +508,6 @@ def train_NEM(X, v, models, opts):
 
     for epoch in range(opts['n_epochs']):    
         for i, (x,) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
-            "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
-            if i == 0:
-                v = torch.cat(n_batch*[v[None,...]], 0)
-                temp = x.squeeze().abs().sum(-1)/n_c
-                vj = torch.cat(n_s*[temp[:,None]], 1)
             "Initialize spatial covariance matrix"
             Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed()
             Rcj = ((vj+eps) * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
@@ -563,7 +564,7 @@ def train_NEM(X, v, models, opts):
 
         if epoch%1 ==0:
             plt.figure()
-            plt.plot(loss_cv, '--xr')
+            plt.semilogy(loss_cv, '--xr')
             plt.title('val loss per epoch')
             plt.show()
 
