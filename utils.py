@@ -30,7 +30,7 @@ torch.backends.cudnn.benchmark = False
 klog2pi_2 = 2.756815  # 3*np.log(np.pi*2)*0.5
 
 #%%
-def load_options(n_s=2, n_epochs=25, n_batch=32, EM_iter=5):
+def load_options(n_s=2, n_epochs=5, n_batch=32, EM_iter=5):
     """[set all the parameters]
 
     Args:
@@ -484,7 +484,11 @@ def train_NEM(X, v, models, opts):
     n_s = v.shape[0]
     n_i, n_f, n_t, n_c =  X.shape 
     eps = 1e-30  # no smaller than 1e-38
+    n_batch = opts['n_batch']
+    I = torch.ones(n_batch, n_s, n_f, n_t, n_c).diag_embed()
+    likelihood = torch.zeros(opts['n_iter'])
     tr = wrap(X, opts)  # tr is a data loader
+
     optimizers = {}
     for j in range(n_s):
         optimizers[j] = optim.RAdam(
@@ -498,16 +502,13 @@ def train_NEM(X, v, models, opts):
 
     for epoch in range(opts['n_epochs']):    
         for i, (x,) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
-            n_batch = x.shape[0]
-            v = torch.cat(n_batch*[v[None,...]], 0)
-            I =  torch.ones(n_batch, n_s, n_f, n_t, n_c).diag_embed()
-            likelihood = torch.zeros(opts['n_iter'])
-
+            "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
+            if i == 0:
+                v = torch.cat(n_batch*[v[None,...]], 0)
+                temp = x.squeeze().abs().sum(-1)/n_c
+                vj = torch.cat(n_s*[temp[:,None]], 1)
             "Initialize spatial covariance matrix"
             Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed()
-            "vj is PSD, real tensor, |xnf|^2"#shape of [n_batch, n_s, n_f, n_t]
-            temp = x.squeeze().abs().sum(-1)/n_c
-            vj = torch.cat(n_s*[temp[:,None]], 1)
             Rcj = ((vj+eps) * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
             "Compute mixture covariance"
             Rx = Rcj.sum(1)  #shape of [n_batch, n_f, n_t, n_c, n_c]
@@ -539,32 +540,28 @@ def train_NEM(X, v, models, opts):
                 "Back propagate to update the input of neural network"
                 vj = (Rj.inverse() @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
 
-                # update the model on GPU
-                if torch.cuda.is_available(): vj = vj.cuda()
-                out = vj.clone()
-                loss_train = torch.rand(n_s)/eps # per EM
-                while loss_train.max() >= (v.cpu()**2).sum()/100:
-                    for j in range(n_s):                    
-                        temp = models[j](vj[:,j][:,None]).exp().squeeze() 
-                        loss = ((temp - v[:, j])**2).sum()
-                        optimizers[j].zero_grad()   
-                        loss.backward()
-                        torch.nn.utils.clip_grad_norm_(models[j].parameters(), max_norm=500)
-                        optimizers[j].step()
-                        torch.cuda.empty_cache()
+            # update the model on GPU
+            if torch.cuda.is_available(): vj = vj.cuda()
+            out = vj.clone()
+            loss_train = torch.rand(n_s)/eps # per EM
+            # while loss_train.max() >= (v.cpu()**2).sum()/100:
+            for j in range(n_s):                    
+                temp = models[j](vj[:,j][:,None]).exp().squeeze() 
+                loss = ((temp - v[:, j])**2).sum()
+                optimizers[j].zero_grad()   
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(models[j].parameters(), max_norm=500)
+                optimizers[j].step()
+                torch.cuda.empty_cache()
 
-                        loss_train[j] = loss.data.cpu().item()
-                        out[:, j] = temp.detach()
-                vj = out.clone()
-                loss, *_ = loss_func(Rcjh, vj, Rj, x, cjh) # gamma is fixed
-                loss_cv.append(loss.data.item())  
-            if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
+                loss_train[j] = loss.data.cpu().item()
+                out[:, j] = temp.detach()
+            vj = out.clone().cpu()
+            # loss, *_ = loss_func(Rcjh, vj, Rj, x, cjh) # gamma is fixed
+            loss_cv.append(((out - v)**2).sum().cpu().item())  
+            if i%3 == 0: print(f'Current iter is {i} in epoch {epoch}')
 
         if epoch%1 ==0:
-            plt.figure()
-            plt.plot(loss_train[-1400::50], '-x')
-            plt.title('train loss per 50 iter in last 1400 iterations')
-
             plt.figure()
             plt.plot(loss_cv, '--xr')
             plt.title('val loss per epoch')
@@ -734,7 +731,7 @@ def wrap(x, opts, v=0,):
         data = Data.TensorDataset(x)
     else:
         data = Data.TensorDataset(x, v)
-    data = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=False)
+    data = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=False, drop_last=True)
     return data
 
 
