@@ -18,12 +18,14 @@ eps = opts.eps;
 klog2pi_2 = n_c*log(pi*2)*0.5;  % 3*log(pi*2)*0.5
 
 % init vj
-% vj = exp(rand(NF, J)/10);
-vj = v;
+rng(0)
+vj = exp(rand(opts.N, opts.F, J)/10);
+vj = reshape(vj, [NF, J]);
+% vj = v;
 % for j = 1:J
 %     vj(:, j) = sum(v, 2)/J;
 % end
-vj = abs(awgn(vj, 10, 'measured'));
+% vj = abs(awgn(vj, 10, 'measured'));
 
 if opts.reproduce_pytorch
     % % reproduce the pytorch result channel=3
@@ -94,6 +96,16 @@ for epoch = 1:opts.iter
             vj(nf, j) = sum(diag(temp))/n_c;
         end
     end
+%     vj = min(vj, 100); %threshold vj
+    
+    % compute log-likelihood
+    if mod(epoch,50) == 0
+        figure(100);
+        plot(log_l(1:epoch),'o-');
+        xlabel('Iterations')
+        ylabel('Log-likelihood')
+        pause(.1);
+    end
     
     % calc loss function(-Q)
     % complex data       p(x;0,Rx) = \Pi_{n,f} 1/det(pi*Rx) e^{-x^H Rx^{-1} x}
@@ -103,14 +115,14 @@ for epoch = 1:opts.iter
         for nf = 1:NF
             Rcj(:,:, nf, j) = (vj(nf,j)+eps) * Rj(:, :, j);
             Rcj(:,:, nf, j) = (Rcj(:,:, nf, j)+ Rcj(:,:, nf, j)')/2;
-            Rcj_inv = inv(Rcj(:, :, nf, j));
-            temp = Rcjh(:, :, nf, j)*Rcj_inv;
-            p1 = 0.5*sum(diag(temp));
-            p2 = klog2pi_2 + 0.5*log(det(Rcj(:,:,nf,j))+eps);
-            l = l + p1 + p2;
+%             Rcj_inv = inv(Rcj(:, :, nf, j));
+%             temp = Rcjh(:, :, nf, j)*Rcj_inv;
+%             p1 = 0.5*sum(diag(temp));
+%             p2 = klog2pi_2 + 0.5*log(det(Rcj(:,:,nf,j))+eps);
+%             l = l + p1 + p2;
         end
     end
-    loss(epoch) = l;
+%     loss(epoch) = l;
     
 end
 
