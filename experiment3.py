@@ -41,14 +41,31 @@ optimizer = optim.RAdam(model.parameters(),
                 betas=(0.9, 0.999),
                 eps=1e-8,
                 weight_decay=0)
-
-optim_gamma = torch.optim.SGD([gamma], lr= opts['lr'])
+for param in model.parameters():
+    param.requires_grad_(False)
+loss_cv = []
 
 for epoch in range(opts['n_epochs']):    
     for i, (gamma, v) in enumerate(tr): # gamma [n_batch, n_f, n_t]
-        out = model(gamma[:,None].cuda())
-        loss = ((out - v[:,None].cuda())**2).sum()/opts['n_batch']
+        x = gamma[:,None].cuda().requires_grad_()
+        v = v[:,None].cuda()
 
+        "update gamma"
+        optim_gamma = torch.optim.SGD([x], lr= opts['lr'])  # every iter the gamma grad is reset
+        out = model(x)
+        loss = ((out - v)**2).sum()/opts['n_batch']
+        optim_gamma.zero_grad()   
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_([x], max_norm=500)
+        optim_gamma.step()
+        torch.cuda.empty_cache()
+
+        "update model"
+        for param in model.parameters():
+            param.requires_grad_(True)
+        x.requires_grad_(False)
+        out = model(x)
+        loss = ((out - v)**2).sum()/opts['n_batch']
         optimizer.zero_grad()   
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=500)
@@ -61,3 +78,5 @@ for epoch in range(opts['n_epochs']):
         plt.title('val loss per epoch')
         plt.show()
 
+
+# %%

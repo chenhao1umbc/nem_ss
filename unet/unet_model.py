@@ -83,9 +83,11 @@ class UNetHalf(nn.Module):
         self.up3 = Up_(128, 64, bilinear)
         self.up4 = Up_(64, 32, bilinear)
         self.reshape = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=1, padding=29),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1, stride=2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, dilation=3, output_padding=2),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True),
+            nn.ConvTranspose2d(16, 16, kernel_size=3, dilation=3, output_padding=2),
             nn.Conv2d(16, 16, kernel_size=3, padding=1),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True)
@@ -98,10 +100,10 @@ class UNetHalf(nn.Module):
         x = self.up1(x)
         x = self.up2(x)
         x = self.up3(x)
-        x = self.up4(x)  # output has W=256, H=256
+        x = self.up4(x)  # output has W=256, H=256, for gamma = 16
         x = self.reshape(x)
         out = self.outc(x)
-        return out[...,3:-3, 3:-3]  #when gammaj is 7, output size is 56
+        return out
 
 
 
