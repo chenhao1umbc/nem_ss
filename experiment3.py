@@ -71,6 +71,8 @@ for epoch in range(opts['n_epochs']):
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=500)
         optimizer.step()
         torch.cuda.empty_cache()
+
+        loss_cv.append(loss.detach().item())
     
     if epoch%1 ==0:
         plt.figure()
