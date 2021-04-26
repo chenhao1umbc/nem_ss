@@ -11,7 +11,7 @@ opts = {}
 opts['n_epochs'] = 100  
 opts['lr'] = 0.01
 opts['n_batch'] = 64  # batch size
-opts['d_gamma'] = 16 # gamma dimesion 16*16 to 200*200
+opts['d_gamma'] = 2 # gamma dimesion 16*16 to 200*200
 
 # %% load data
 from PIL import Image  # install Pillow
@@ -29,7 +29,7 @@ for r in range(105):
         if n < N:
             data[n] = torch.roll(d, (r, c), (0, 1))
             n += 1
-gamma = torch.rand(N, opts['d_gamma'], opts['d_gamma'])
+gamma = torch.rand(N, opts['d_gamma'])
 " wrap as data loader"
 data = Data.TensorDataset(gamma, data)
 tr = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=True, drop_last=True)
@@ -52,7 +52,7 @@ for epoch in range(opts['n_epochs']):
 
         "update gamma"
         optim_gamma = torch.optim.SGD([x], lr= opts['lr'])  # every iter the gamma grad is reset
-        out = model(x)
+        out = model(x.diag_embed())
         loss = ((out - v)**2).sum()/opts['n_batch']
         optim_gamma.zero_grad()   
         loss.backward()
@@ -64,7 +64,7 @@ for epoch in range(opts['n_epochs']):
         for param in model.parameters():
             param.requires_grad_(True)
         x.requires_grad_(False)
-        out = model(x)
+        out = model(x.diag_embed())
         loss = ((out - v)**2).sum()/opts['n_batch']
         optimizer.zero_grad()   
         loss.backward()
