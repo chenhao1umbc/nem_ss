@@ -96,7 +96,6 @@ class UNetHalf2(nn.Module):
             nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True)
         )
-
         self.outc = OutConv(16, n_classes)
 
 
@@ -109,7 +108,6 @@ class UNetHalf2(nn.Module):
         x = self.up5(x) # input has W=32, H=32, for gamma = 2
         x = self.up6(x)
         x = self.up7(x)
-
         x = self.reshape(x) # input 256 output 150
         out = self.outc(x)
         return out
@@ -144,7 +142,6 @@ class UNetHalf16(nn.Module):
             nn.BatchNorm2d(16),
             nn.LeakyReLU(inplace=True)
         )
-
         self.outc = OutConv(16, n_classes)
 
     def forward(self, x):
