@@ -153,3 +153,45 @@ class UNetHalf16(nn.Module):
         x = self.reshape(x)
         out = self.outc(x)
         return out
+
+
+class UNetHalf(nn.Module):
+    def __init__(self, n_channels, n_classes, bilinear=False):
+        """Only the up part of the unet
+
+        Args:
+            n_channels ([type]): [how many input channels=n_sources]
+            n_classes ([type]): [how many output classes=n_sources]
+            bilinear (bool, optional): [use interpolation or deconv]. Defaults to False(use deconv).
+        """
+        super(UNetHalf16, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = DoubleConv(n_channels, 512)
+        self.up1 = Up_(512, 256, bilinear)
+        self.up2 = Up_(256, 128, bilinear)
+        self.up3 = Up_(128, 64, bilinear)
+        self.up4 = Up_(64, 32, bilinear)
+        self.reshape = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, padding=1, stride=2),
+            nn.ConvTranspose2d(32, 16, kernel_size=5, dilation=3, output_padding=2),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(inplace=True),
+            nn.ConvTranspose2d(16, 16, kernel_size=3, dilation=3, output_padding=2),
+            nn.Conv2d(16, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(inplace=True)
+        )
+        self.outc = OutConv(16, n_classes)
+
+    def forward(self, x):
+        x = self.inc(x)
+        x = self.up1(x)
+        x = self.up2(x)
+        x = self.up3(x)
+        x = self.up4(x)  # output has W=256, H=256, for gamma = 16
+        x = self.reshape(x)
+        out = self.outc(x)
+        return out
