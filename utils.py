@@ -20,6 +20,7 @@ plt.rcParams['figure.dpi'] = 100
 
 from unet.unet_model import UNet
 import torch_optimizer as optim
+from unet.unet_model import UNetHalf
 from unet.unet_model import UNetHalf2
 from unet.unet_model import UNetHalf16
 

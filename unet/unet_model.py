@@ -164,7 +164,7 @@ class UNetHalf(nn.Module):
             n_classes ([type]): [how many output classes=n_sources]
             bilinear (bool, optional): [use interpolation or deconv]. Defaults to False(use deconv).
         """
-        super(UNetHalf16, self).__init__()
+        super(UNetHalf, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
