@@ -35,7 +35,7 @@ data = Data.TensorDataset(gamma, data)
 tr = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=True, drop_last=True)
 
 #%% set neural networks
-model = UNetHalf(n_channels=1, n_classes=1).cuda()
+model = UNetHalf2(n_channels=1, n_classes=1).cuda()
 optimizer = optim.RAdam(model.parameters(),
                 lr= opts['lr'],
                 betas=(0.9, 0.999),
