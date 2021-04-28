@@ -22,7 +22,7 @@ from unet.unet_model import UNet
 import torch_optimizer as optim
 from unet.unet_model import UNetHalf
 from unet.unet_model import UNetHalf2
-from unet.unet_model import UNetHalf16
+from unet.unet_model import UNetHalf64_4
 
 "make the result reproducible"
 torch.manual_seed(0)
