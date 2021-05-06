@@ -25,8 +25,24 @@ torch.backends.cudnn.benchmark = False
 print('done loading')
 
 
-
 # %% EM  algorithm for one sample
+def calc_ll_real2(x, vhat, Rj, Rb):
+    """Rj shape of [J, M, M]
+        vhat shape of [N, F, J]
+        Rb shape of [M, M]
+        x shape of [N, F, M]
+    """
+    _, M, M = Rj.shape
+    N, F, J = vhat.shape
+    Rcj = vhat.reshape(N*F, J) @ Rj.reshape(J, M*M)
+    Rcj = Rcj.reshape(N, F, M, M)
+    Rx = Rcj + Rb 
+    # ll = ll - 0.5*log(2*np.pi*det(Rxnf)) - x(:,n,f)'*inv(Rxnf)*x(:,n,f)/2
+    l = -0.5*(2*np.pi*Rx.det()).log() - (x[..., None, :] @ Rx.inverse() @ x[..., None]).squeeze()
+
+    return l.sum()
+
+
 "reproduce the Matlab result"
 d = sio.loadmat('data/x1M5.mat')
 x, c = torch.tensor(d['x'], dtype=torch.float), torch.tensor(d['c'], dtype=torch.float)
@@ -47,6 +63,7 @@ Rb = torch.eye(M)
 Hhat = torch.randn(M, J)
 Rxxhat = (x[...,None] @ x[..., None, :]).sum((0,1))/NF
 Rj = torch.zeros(J, M, M)
+ll_traj = []
 
 for iter in range(max_iter):
     "E-step"
@@ -67,7 +84,27 @@ for iter in range(max_iter):
     "compute log-likelyhood"
     for j in range(J):
         Rj[j] = Hhat[:, j][..., None] @ Hhat[:, j][..., None].t()
+    ll_traj.append(calc_ll_real2(x, vhat, Rj, Rb).item())
+
+    if iter%50 == 0:
+        plt.figure(100)
+        plt.plot(ll_traj,'o-')
+        plt.show()
+
+"display results"
+for j in range(J):
+    plt.figure(j)
+    plt.subplot(1,2,1)
+    plt.imshow(vhat[:,:,j])
+    plt.colorbar()
     
+    plt.subplot(1,2,2)
+    plt.imshow(vj[:,:,j])
+    plt.title('Ground-truth')
+    plt.colorbar()
+
+
+
 #%% Neural EM algorithm
 
 # data = h5py.File('data/x5000M5.mat', 'r')
