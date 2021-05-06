@@ -34,6 +34,7 @@ def calc_ll_cpx2(x, vhat, Rj, Rb):
         Rb shape of [M, M]
         x shape of [N, F, M]
     """
+
     _, M, M = Rj.shape
     N, F, J = vhat.shape
     Rcj = vhat.reshape(N*F, J) @ Rj.reshape(J, M*M)
@@ -41,7 +42,6 @@ def calc_ll_cpx2(x, vhat, Rj, Rb):
     Rx = Rcj + Rb 
     Rx = (Rx + Rx.transpose(-1, -2).conj())/2
     l = -(np.pi*Rx.det()).log() - (x[..., None, :]@Rx.inverse()@x[..., None]).squeeze()
-
     return l.sum()
 
 "reproduce the Matlab result"
@@ -57,13 +57,13 @@ c = c.permute(1,2,3,0) # shape of [N, F, J, M]
 d = sio.loadmat('data/v.mat')
 vj = torch.tensor(d['v'])
 pwr = torch.ones(1, 3)  # signal powers
-max_iter = 400
+max_iter = 200
 
 "initial"
 vhat = torch.randn(N, F, J).abs().to(torch.cdouble)
 Rb = torch.eye(M).to(torch.cdouble)
 Hhat = torch.randn(M, J).to(torch.cdouble)
-Rxxhat = (x[...,None] @ x[..., None, :]).sum((0,1))/NF
+Rxxhat = (x[...,None] @ x[..., None, :].conj()).sum((0,1))/NF
 Rj = torch.zeros(J, M, M).to(torch.cdouble)
 ll_traj = []
 
@@ -80,9 +80,11 @@ for i in range(max_iter):
 
     "M-step"
     vhat = Rsshatnf.diagonal(dim1=-1, dim2=-2)
+    vhat.imag = 0
     Hhat = Rxshat @ Rsshat.inverse()
     Rb = Rxxhat - Hhat@Rxshat.t().conj() - \
         Rxshat@Hhat.t().conj() + Hhat@Rsshat@Hhat.t().conj()
+    Rb = Rb.diag().diag()
     
     "compute log-likelyhood"
     for j in range(J):
@@ -98,7 +100,7 @@ for i in range(max_iter):
 for j in range(J):
     plt.figure(j)
     plt.subplot(1,2,1)
-    plt.imshow(vhat[:,:,j])
+    plt.imshow(vhat[:,:,j].real)
     plt.colorbar()
     
     plt.subplot(1,2,2)
