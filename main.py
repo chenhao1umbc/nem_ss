@@ -24,7 +24,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 print('done loading')
 
-#%%
+#%% loade data
 d = sio.loadmat('v2.mat')
 [N,F,J] = d['v'].shape
 M = 5          # no of channels
@@ -32,8 +32,15 @@ pwr = torch.ones(1, 3)  # signal powers
 max_iter = 400
 nvar = 1e-6    # noise variance
 
+
 # %% EM  algorithm for one sample
+# reproduce the Matlab result
+d = sio.loadmat('x1M3.mat')
+x, c = d['x'], d['c']
 
 
 #%% Neural EM algorithm
+data = h5py.File('x5000M5.mat', 'r')
+x = torch.tensor(data['x'], dtype=torch.float) # [sample, N, F, channel]
+xtr, xcv, xte = x[:4000], x[4000:4500], x[4500:]
 
