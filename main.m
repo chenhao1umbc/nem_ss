@@ -6,7 +6,7 @@
 clear;
 load('v2.mat');
 [N,F,J] = size(v);
-M = 5;          % no of channels
+M = 3;          % no of channels
 pwr = [1 1 1];  % signal powers
 max_iter = 400;
 rseed = 1;      % random number gen seed
@@ -19,12 +19,12 @@ py.importlib.reload(myfunc);
 
 %% generate the signal
 % generate total I of them
-I = 50;
+I = 5000;
 h = randn(M,J, I);
 v1 = zeros(N,F,J, I);
 s = zeros(N,F,J, I);
 c = zeros(M,N,F,J, I);
-x = zeros(M, N, F, J, I);
+x = zeros(M, N, F, I);
 for j = 1:J
     v1(:,:,j) = pwr(j)*v(:,:,j);
 end
@@ -81,17 +81,15 @@ for iter = 1:max_iter
     Rxshat = Rxshat / N / F;
     
     % M-step
-    %     for j = 1:J
-    %         for n = 1:N
-    %             for f = 1:F
-    %                 vhat(n,f,j) = Rsshatnf(j,j,n,f);
-    %             end
-    %         end
-    %     end
-    % use neural network to get vj_hat
-
-    = myfunc; % added the myfunc to option 
-    
+        for j = 1:J
+            for n = 1:N
+                for f = 1:F
+                    vhat(n,f,j) = Rsshatnf(j,j,n,f);
+                end
+            end
+        end
+    % use neural network to get vj_hat   
+    %vhat= myfunc(gamma);
     Hhat = Rxshat/Rsshat;
     Rb = diag(diag( Rxxhat - Hhat*Rxshat' - Rxshat*Hhat' + Hhat*Rsshat*Hhat'));
     
