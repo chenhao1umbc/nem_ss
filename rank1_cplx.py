@@ -55,7 +55,7 @@ c = c.permute(1,2,3,0) # shape of [N, F, J, M]
 
 "loade data"
 d = sio.loadmat('data/v.mat')
-vj = torch.tensor(d['v'], dtype=torch.cdouble)
+vj = torch.tensor(d['v'])
 pwr = torch.ones(1, 3)  # signal powers
 max_iter = 400
 

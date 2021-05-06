@@ -82,6 +82,7 @@ for i in range(max_iter):
     vhat = Rsshatnf.diagonal(dim1=-1, dim2=-2)
     Hhat = Rxshat @ Rsshat.inverse()
     Rb = Rxxhat - Hhat@Rxshat.t() - Rxshat@Hhat.t() + Hhat@Rsshat@Hhat.t()
+    Rb = Rb.diag().diag()
     
     "compute log-likelyhood"
     for j in range(J):
