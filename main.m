@@ -11,8 +11,11 @@ pwr = [1 1 1];  % signal powers
 max_iter = 400;
 rseed = 1;      % random number gen seed
 nvar = 1e-6;    % noise variance
-
 rng(rseed);
+
+% use matlab python hybrid coding
+myfunc = py.importlib.import_module('myconv');
+py.importlib.reload(myfunc);
 
 %% generate the signal
 % generate total I of them
@@ -78,13 +81,17 @@ for iter = 1:max_iter
     Rxshat = Rxshat / N / F;
     
     % M-step
-    for j = 1:J
-        for n = 1:N
-            for f = 1:F
-                vhat(n,f,j) = Rsshatnf(j,j,n,f);
-            end
-        end
-    end
+    %     for j = 1:J
+    %         for n = 1:N
+    %             for f = 1:F
+    %                 vhat(n,f,j) = Rsshatnf(j,j,n,f);
+    %             end
+    %         end
+    %     end
+    % use neural network to get vj_hat
+
+    = myfunc; % added the myfunc to option 
+    
     Hhat = Rxshat/Rsshat;
     Rb = diag(diag( Rxxhat - Hhat*Rxshat' - Rxshat*Hhat' + Hhat*Rsshat*Hhat'));
     
