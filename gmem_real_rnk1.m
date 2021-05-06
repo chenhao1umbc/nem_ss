@@ -4,7 +4,7 @@
 
 %% parameters
 clear;
-load('v.mat');
+load('data/v.mat');
 [N,F,J] = size(v);
 M = 3;          % no of channels
 pwr = [1 1 1];  % signal powers
