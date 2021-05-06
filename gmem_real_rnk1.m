@@ -31,7 +31,7 @@ end
 x = sum(c,4) + randn(M,N,F)*sqrt(nvar);   % M x N x F
 
 %% EM algorithm
-vhat = abs(randn(N,F,J));
+vhat = abs(randn(N,F,J)); %vhat = v;
 Rb = eye(M,M);
 Hhat = randn(M,J);
 shat = zeros(J,N,F);
@@ -45,9 +45,8 @@ end
 Rxxhat = Rxxhat / N / F;
 Rj = zeros(M,M,J);
 ll_traj = [];
-for iter = 1:max_iter
-    iter
-    
+
+for iter = 1:max_iter  
     % E-step
     for n = 1:N
         for f = 1:F
@@ -97,6 +96,27 @@ end
 %% display results
 for j = 1:J
     figure(j);
+    subplot(1,2,1)
     imagesc(vhat(:,:,j));
     colorbar
+    
+    subplot(1,2,2)
+    imagesc(v(:,:,j));
+    title('Ground-truth')
+    colorbar
 end
+
+figure(1001)
+imagesc(squeeze(shat(3,:,:)))
+caxis([-3, 3])
+colorbar
+
+figure(1000)
+imagesc(s(:,:,3))
+caxis([-3, 3])
+colorbar
+title('Ground-truth')
+
+norm(squeeze(shat(3,:,:))-s(:,:,3))
+
+
