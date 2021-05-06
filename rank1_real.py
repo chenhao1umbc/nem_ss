@@ -26,7 +26,7 @@ torch.backends.cudnn.benchmark = False
 print('done loading')
 
 
-# %% EM  algorithm for one sample
+# %% EM algorithm for one real sample
 def calc_ll_real2(x, vhat, Rj, Rb):
     """Rj shape of [J, M, M]
         vhat shape of [N, F, J]
@@ -45,7 +45,7 @@ def calc_ll_real2(x, vhat, Rj, Rb):
     return l.sum()
 
 "reproduce the Matlab result"
-d = sio.loadmat('data/x1M5.mat')
+d = sio.loadmat('data/x1M3.mat')
 x, c = torch.tensor(d['x'], dtype=torch.get_default_dtype()), \
     torch.tensor(d['c'], dtype=torch.get_default_dtype())
 M, N, F, J = c.shape
