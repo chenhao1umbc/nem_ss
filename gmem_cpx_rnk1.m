@@ -4,12 +4,12 @@
 
 %% parameters
 clear;
-load('v.mat');
+load('data/v.mat');
 [N,F,J] = size(v);
 M = 3;          % no of channels
 pwr = [10 1 1];  % signal powers
 theta = [213 58 35]*pi/180;  % signal AOAs  [-60 10 45]
-max_iter = 100;
+max_iter = 200;
 rseed = 1;      % random number gen seed
 nvar = 1e-6;    % noise variance
 
