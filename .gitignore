@@ -7,5 +7,4 @@ checkpoints/
 SUBMISSION*
 venv/
 .ipynb_checkpoints/
-x5000M3.mat
-x5000M5.mat
+.mat

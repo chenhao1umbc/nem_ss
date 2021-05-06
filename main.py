@@ -28,20 +28,49 @@ print('done loading')
 
 # %% EM  algorithm for one sample
 "reproduce the Matlab result"
-d = sio.loadmat('x1M5.mat')
+d = sio.loadmat('data/x1M5.mat')
 x, c = torch.tensor(d['x'], dtype=torch.float), torch.tensor(d['c'], dtype=torch.float)
 M, N, F, J = c.shape
-#%% loade data
-d = sio.loadmat('v2.mat')
+NF = N*F
+x = x.permute(1,2,0)  # shape of [N, F, M]
+c = c.permute(1,2,3,0) # shape of [N, F, J, M]
+
+"loade data"
+d = sio.loadmat('data/v2.mat')
 vj = torch.tensor(d['v'], dtype=torch.float)
 pwr = torch.ones(1, 3)  # signal powers
 max_iter = 400
 
+"initial"
+vhat = torch.randn(N, F, J).abs()
+Rb = torch.eye(M)
+Hhat = torch.randn(M, J)
+Rxxhat = (x[...,None] @ x[..., None, :]).sum((0,1))/NF
+Rj = torch.zeros(J, M, M)
 
+for iter in range(max_iter):
+    "E-step"
+    Rs = vhat.diag_embed()
+    Rx = Hhat @ Rs @ Hhat.t() + Rb
+    W = Rs @ Hhat.t() @ Rx.inverse()
+    shat = W @ x[...,None]
+    Rsshatnf = shat @ shat.transpose(-1,-2) + Rs - W@Hhat@Rs
+    
+    Rsshat = Rsshatnf.sum([0,1])/NF
+    Rxshat = (x[..., None] @ shat.transpose(-1,-2)).sum((0,1))/NF
 
+    "M-step"
+    vhat = Rsshatnf.diagonal(dim1=-1, dim2=-2)
+    Hhat = Rxshat @ Rsshat.inverse()
+    Rb = Rxxhat - Hhat@Rxshat.t() - Rxshat@Hhat.t() + Hhat@Rsshat@Hhat.t()
+
+    "compute log-likelyhood"
+    for j in range(J):
+        Rj[j] = Hhat[:, j][..., None] @ Hhat[:, j][..., None].t()
+    
 #%% Neural EM algorithm
 
-# data = h5py.File('x5000M5.mat', 'r')
+# data = h5py.File('data/x5000M5.mat', 'r')
 # x = torch.tensor(data['x'], dtype=torch.float) # [sample, N, F, channel]
 # xtr, xcv, xte = x[:4000], x[4000:4500], x[4500:]
 
