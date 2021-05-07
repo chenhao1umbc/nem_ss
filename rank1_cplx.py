@@ -27,14 +27,12 @@ print('done loading')
 
 
 # %% EM algorithm for one complex sample
-
 def calc_ll_cpx2(x, vhat, Rj, Rb):
-    """Rj shape of [J, M, M]
+    """ Rj shape of [J, M, M]
         vhat shape of [N, F, J]
         Rb shape of [M, M]
         x shape of [N, F, M]
     """
-
     _, M, M = Rj.shape
     N, F, J = vhat.shape
     Rcj = vhat.reshape(N*F, J) @ Rj.reshape(J, M*M)
@@ -80,11 +78,12 @@ for i in range(max_iter):
 
     "M-step"
     vhat = Rsshatnf.diagonal(dim1=-1, dim2=-2)
-    vhat.imag = 0
+    vhat.imag = vhat.imag - vhat.imag
     Hhat = Rxshat @ Rsshat.inverse()
     Rb = Rxxhat - Hhat@Rxshat.t().conj() - \
         Rxshat@Hhat.t().conj() + Hhat@Rsshat@Hhat.t().conj()
     Rb = Rb.diag().diag()
+    Rb.imag = Rb.imag - Rb.imag
     
     "compute log-likelyhood"
     for j in range(J):
@@ -108,9 +107,6 @@ for j in range(J):
     plt.title('Ground-truth')
     plt.colorbar()
     plt.show()
-
-# pytorch inverse stability issue
-print('how many nan: ', torch.tensor(ll_traj).isnan().sum().item())
 
 
 #%% Neural EM algorithm
