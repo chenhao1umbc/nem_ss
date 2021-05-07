@@ -38,9 +38,25 @@ def calc_ll_cpx2(x, vhat, Rj, Rb):
     Rcj = vhat.reshape(N*F, J) @ Rj.reshape(J, M*M)
     Rcj = Rcj.reshape(N, F, M, M)
     Rx = Rcj + Rb 
-    Rx = (Rx + Rx.transpose(-1, -2).conj())/2
     l = -(np.pi*Rx.det()).log() - (x[..., None, :]@Rx.inverse()@x[..., None]).squeeze()
+    # l = -(np.pi*mydet(Rx)).log() - (x[..., None, :]@Rx.inverse()@x[..., None]).squeeze()
     return l.sum()
+
+def mydet(x):
+    """calc determinant of tensor for the last 2 dimensions,
+    suppose x is postive definite hermitian matrix
+
+    Args:
+        x ([pytorch tensor]): [shape of [..., N, N]]
+    """
+    s = x.shape[:-2]
+    N = x.shape[-1]
+    l = torch.linalg.cholesky(x)
+    ll = l.diagonal(dim1=-1, dim2=-2)
+    res = torch.ones(s).to(x.device)
+    for i in range(N):
+        res = res * ll[..., i]**2
+    return res
 
 "reproduce the Matlab result"
 d = sio.loadmat('data/x1M3_cpx.mat')
