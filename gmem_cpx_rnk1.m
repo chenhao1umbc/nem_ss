@@ -104,4 +104,5 @@ end
 for j = 1:J
     figure(j);
     imagesc(vhat(:,:,j));
+    colorbar;
 end
