@@ -8,7 +8,7 @@ load('data/v.mat');
 M = 3;          % no of channels
 pwr = [1 1 1];  % signal powers
 nvar = 1e-6;    % noise variance
-I = 3000; % how many traning samples
+I = 100; % how many traning samples
 
 %% with no shift
 vp = zeros(N,F,J);
@@ -17,6 +17,8 @@ for j = 1:J
 end
 
 x = zeros(I,M,N,F);
+c_all = zeros(I,M,N,F,J);
+h_all = zeros(I,M,J);
 for i = 1:I     
     theta = [rand(1)*30, rand(1)*30+60, -rand(1)*30-30]*pi/180;  % len=M, signal AOAs  
     h = exp(-1i*pi*(0:M-1)'*sin(theta));
@@ -29,6 +31,8 @@ for i = 1:I
         end
     end
     x(i,:,:,:) = sum(c,4) + (randn(M,N,F)+1i*randn(M,N,F))/sqrt(2)*sqrt(nvar);   % M x N x F
+    c_all(i,:,:,:,:) = c;
+    h_all(i,:,:) = h;
 end
 
 %% with shift
